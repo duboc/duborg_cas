@@ -1,0 +1,163 @@
+---
+project: Apps Project
+kind: PIPELINE
+name: IaC Pipeline
+enabled: true
+concurrency: 10
+ciWorkspace:
+  endpoint: ''
+  image: ''
+  registry: ''
+  path: ''
+  cache:
+  - ''
+stageOrder:
+- Dev
+- Prod
+stages:
+  Prod:
+    taskOrder:
+    - Deploy to prod
+    tasks:
+      Deploy to prod:
+        type: Blueprint
+        endpoints:
+          gitServer: Dev IaC
+        input:
+          _deploymentFlag: true
+          filepath: iac-lab/blueprint.yaml
+          action: UpdateDeployment
+          allowDestroy: true
+          deploymentName: dev deploy
+          parameters: {
+            environment: 'env:prod'
+          }
+  Dev:
+    taskOrder:
+    - Clean up
+    - Deploy to dev
+    - Approval
+    tasks:
+      Clean up:
+        type: Blueprint
+        input:
+          _deploymentFlag: true
+          action: DeleteDeployment
+          deploymentName: dev deploy
+      Deploy to dev:
+        type: Blueprint
+        endpoints:
+          gitServer: Dev IaC
+        input:
+          filepath: iac-lab/blueprint.yaml
+          action: CreateDeployment
+          deploymentName: dev deploy
+          parameters: {
+            environment: 'env:dev'
+          }
+      Approval:
+        type: UserOperation
+        endpoints:
+          emailServer: Codestream-Default-Email
+        input:
+          summary: Approve to production
+          pipelineName: ${name}
+          expirationInDays: 3
+          approverGroups: [
+            ]
+          approvers: [
+            aduboc@vmware.com]
+          description: Is this thing ready for production?
+          sendemail: true
+notifications:
+  webhook:
+  - action: post
+    event: SUCCESS
+    headers:
+      Content-type: ' application/json'
+    stage: Dev
+    payload: |-
+      {
+          "text": "Your environment is cleared"
+      }
+    task: Clean up
+    agent: default
+    url: https://hooks.slack.com/services/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
+  - action: post
+    event: FAILURE
+    headers:
+      Content-type: ' application/json'
+    stage: Dev
+    payload: |-
+      {
+          "text": "Failed to clear your environment"
+      }
+    task: Clean up
+    agent: default
+    url: https://hooks.slack.com/services/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
+  - action: post
+    event: SUCCESS
+    headers:
+      Content-type: ' application/json'
+    stage: Dev
+    payload: |-
+      {
+          "text": "Your deployment is ready and it took ${duration} here the details:
+
+
+      ${Dev.Deploy to dev.output.deploymentDetails}"
+      }
+    task: Deploy to dev
+    agent: default
+    url: https://hooks.slack.com/services/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
+  - action: post
+    event: FAILURE
+    headers:
+      Content-type: ' application/json'
+    stage: Dev
+    payload: |-
+      {
+          "text": "You have a failed deploy :( "
+      }
+    task: Deploy to dev
+    agent: default
+    url: https://hooks.slack.com/services/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
+  - action: post
+    event: WAITING
+    headers:
+      Content-type: ' application/json'
+    stage: Dev
+    payload: |-
+      {
+          "text": "Hey! You have something waiting for your approval."
+      }
+    task: Approval
+    agent: default
+    url: https://hooks.slack.com/services/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
+  - action: post
+    event: SUCCESS
+    headers:
+      Content-type: ' application/json'
+    stage: Prod
+    payload: |-
+      {
+          "text": "Your deployment is ready and it took ${duration} here the details:
+
+
+      ${Dev.Deploy to dev.output.deploymentDetails}"
+      }
+    task: Deploy to prod
+    agent: default
+    url: https://hooks.slack.com/services/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
+  - action: post
+    event: FAILURE
+    headers:
+      Content-type: ' application/json'
+    stage: Prod
+    payload: |-
+      {
+          "text": "You have a failed deploy :( "
+      }
+    task: Deploy to prod
+    agent: default
+    url: https://hooks.slack.com/services/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

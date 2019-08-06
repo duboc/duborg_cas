@@ -1,0 +1,80 @@
+---
+project: Apps Project
+kind: PIPELINE
+name: docker example pipeline
+enabled: true
+concurrency: 10
+ciWorkspace:
+  endpoint: ''
+  image: ''
+  registry: ''
+  path: ''
+  cache:
+  - ''
+stageOrder:
+- Dev
+- Remove
+stages:
+  Dev:
+    taskOrder:
+    - Docker-Build-Host
+    - Deploy Web Server
+    tasks:
+      Deploy Web Server:
+        type: SSH
+        ignoreFailure: true
+        preCondition: ${Dev.Docker-Build-Host.status} == 'COMPLETED'
+        input:
+          privatekey: s2enc~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
+          password: ''
+          workingDirectory: ''
+          environmentVariables: {
+            }
+          host: ${Dev.Docker-Build-Host.output.deploymentDetails.resources.Cloud_Machine_1.address}
+          arguments: [
+            ]
+          passphrase: ''
+          script: |
+            #!/bin/bash
+
+            mkdir /home/ubuntu/www
+            chmod 777 /home/ubuntu/www
+            echo 'Oi Parana Banco' > /home/ubuntu/www/index.html
+            cd /home/ubuntu/www
+            /usr/bin/docker run -dit --restart always --name my-apache-webserver -p 80:80 -v /home/ubuntu/www:/usr/local/apache2/htdocs/ duboc/httpd:latest
+          username: ubuntu
+      Docker-Build-Host:
+        type: Blueprint
+        input:
+          blueprint: Docker-host
+          filepath: ''
+          action: CreateDeployment
+          deploymentName: Docker-Infra-Pipeline-${executionId}
+          version: '1.0'
+          parameters: {
+            }
+  Remove:
+    taskOrder:
+    - Approval
+    - Delete-Docker-Host
+    tasks:
+      Delete-Docker-Host:
+        type: Blueprint
+        input:
+          _deploymentFlag: false
+          action: DeleteDeployment
+          deploymentName: Docker-Infra-Pipeline-${executionId}
+      Approval:
+        type: UserOperation
+        endpoints:
+          emailServer: Codestream-Default-Email
+        input:
+          summary: Approval for Removing ${name}
+          pipelineName: ${name}
+          expirationInDays: 1
+          approverGroups: [
+            ]
+          approvers: [
+            aduboc@vmware.com]
+          description: Need your approval Mr. Anderson.
+          sendemail: true

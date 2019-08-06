@@ -1,0 +1,313 @@
+---
+project: Apps Project
+kind: PIPELINE
+name: yelb pipeline
+enabled: true
+concurrency: 10
+ciWorkspace:
+  endpoint: ''
+  image: ''
+  registry: ''
+  path: ''
+  cache:
+  - ''
+stageOrder:
+- Dev
+- CleanUp
+stages:
+  Dev:
+    taskOrder:
+    - Docker-Build-Host
+    - Docker-Build
+    - CreateDevNamespace
+    - CreateFrontEndUI,Create App,Create Redis DB
+    - Test and Approve
+    tasks:
+      CreateFrontEndUI:
+        type: K8S
+        ignoreFailure: true
+        endpoints:
+          kubernetesServer: VKE-Dubokluster
+        input:
+          filePath: ''
+          commit: ''
+          namespace: ''
+          scmConstants: {
+            }
+          action: CREATE
+          filterByLabel: ''
+          continueOnConflict: false
+          timeout: '5'
+          yaml: |-
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: yelb-ui
+              labels:
+                app: yelb-ui
+                tier: frontend
+              namespace: yelb-devtest-${executionIndex}
+            spec:
+              type: LoadBalancer
+              ports:
+              - port: 80
+                protocol: TCP
+                targetPort: 80
+              selector:
+                app: yelb-ui
+                tier: frontend
+            ---
+            apiVersion: extensions/v1beta1
+            kind: Deployment
+            metadata:
+              name: yelb-ui
+              namespace: yelb-devtest-${executionIndex}
+            spec:
+              replicas: 1
+              template:
+                metadata:
+                  labels:
+                    app: yelb-ui
+                    tier: frontend
+                spec:
+                  containers:
+                  - name: yelb-ui
+                    image: duboc/yelbui:${executionIndex}
+                    ports:
+                    - containerPort: 80
+            ---
+            apiVersion: extensions/v1beta1
+            kind: Deployment
+            metadata:
+              name: redis-server
+              namespace: yelb-devtest-${executionIndex}
+            spec:
+              replicas: 1
+              template:
+                metadata:
+                  labels:
+                    app: redis-server
+                    tier: cache
+                spec:
+                  containers:
+                  - name: redis-server
+                    image: redis:4.0.2
+                    ports:
+                    - containerPort: 6379
+            ---
+            apiVersion: extensions/v1beta1
+            kind: Deployment
+            metadata:
+              name: yelb-db
+              namespace: yelb-devtest-${executionIndex}
+            spec:
+              replicas: 1
+              template:
+                metadata:
+                  labels:
+                    app: yelb-db
+                    tier: backenddb
+                spec:
+                  containers:
+                  - name: yelb-db
+                    image: mreferre/yelb-db:0.3
+                    ports:
+                    - containerPort: 5432
+            ---
+            apiVersion: extensions/v1beta1
+            kind: Deployment
+            metadata:
+              name: yelb-appserver
+              namespace: yelb-devtest-${executionIndex}
+            spec:
+              replicas: 1
+              template:
+                metadata:
+                  labels:
+                    app: yelb-appserver
+                    tier: middletier
+                spec:
+                  containers:
+                  - name: yelb-appserver
+                    image: mreferre/yelb-appserver:0.3
+                    ports:
+                    - containerPort: 4567
+          revision: n-1
+      Create Redis DB:
+        type: K8S
+        ignoreFailure: true
+        endpoints:
+          kubernetesServer: VKE-Dubokluster
+        input:
+          filePath: ''
+          commit: ''
+          namespace: ''
+          scmConstants: {
+            }
+          action: CREATE
+          filterByLabel: ''
+          continueOnConflict: false
+          timeout: '5'
+          yaml: |-
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: redis-server
+              labels:
+                app: redis-server
+                tier: cache
+              namespace: yelb-devtest-${executionIndex}
+            spec:
+              type: ClusterIP
+              ports:
+              - port: 6379
+              selector:
+                app: redis-server
+                tier: cache
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: yelb-db
+              labels:
+                app: yelb-db
+                tier: backenddb
+              namespace: yelb-devtest-${executionIndex}
+            spec:
+              type: ClusterIP
+              ports:
+              - port: 5432
+              selector:
+                app: yelb-db
+                tier: backenddb
+            ---
+          revision: n-1
+      Create App:
+        type: K8S
+        ignoreFailure: true
+        endpoints:
+          kubernetesServer: VKE-Dubokluster
+        input:
+          filePath: ''
+          commit: ''
+          namespace: ''
+          scmConstants: {
+            }
+          action: CREATE
+          filterByLabel: ''
+          continueOnConflict: false
+          timeout: '5'
+          yaml: |-
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: yelb-appserver
+              labels:
+                app: yelb-appserver
+                tier: middletier
+              namespace: yelb-devtest-${executionIndex}
+            spec:
+              type: ClusterIP
+              ports:
+              - port: 4567
+              selector:
+                app: yelb-appserver
+                tier: middletier
+          revision: n-1
+      Docker-Build:
+        type: SSH
+        ignoreFailure: true
+        preCondition: ${Dev.Docker-Build-Host.status} == 'COMPLETED'
+        input:
+          privatekey: s2enc~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
+          password: ''
+          workingDirectory: ''
+          environmentVariables: {
+            }
+          host: ${Dev.Docker-Build-Host.output.deploymentDetails.resources.Cloud_Machine_1.address}
+          arguments: [
+            ]
+          passphrase: ''
+          script: |-
+            #!/bin/bash
+
+            tag=${executionId}
+
+            git clone https://github.com/duboc/yelb
+            cd yelb/yelb-ui
+            docker build -t duboc/yelbui:$tag .
+            docker push duboc/yelbui:$tag
+            echo $tag > lastrun.log
+          username: ubuntu
+      Test and Approve:
+        type: UserOperation
+        endpoints:
+          emailServer: Codestream-Default-Email
+        input:
+          summary: Yelb-Deployment-Successful-${executionIndex}
+          pipelineName: ${name}
+          expirationInDays: 3
+          approvers: [
+            aduboc@vmware.com]
+          description: The Yelb app was successfully deployed with pipeline run ${executionIndex}.  Please
+            test and approve for release to Prod.
+          sendemail: true
+      Docker-Build-Host:
+        type: Blueprint
+        input:
+          blueprint: Docker-host
+          action: CreateDeployment
+          deploymentName: Docker-Infra-Pipeline-${executionId}
+          version: '1.0'
+          parameters: {
+            }
+      CreateDevNamespace:
+        type: K8S
+        endpoints:
+          kubernetesServer: VKE-Dubokluster
+        input:
+          filePath: ''
+          commit: ''
+          namespace: ''
+          scmConstants: {
+            }
+          action: CREATE
+          filterByLabel: ''
+          continueOnConflict: false
+          timeout: '5'
+          yaml: |-
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: yelb-devtest-${executionIndex}
+            spec:
+              finalizers:
+              - kubernetes
+          revision: n-1
+  CleanUp:
+    taskOrder:
+    - Delete Dev Namespace
+    tasks:
+      Delete Dev Namespace:
+        type: K8S
+        endpoints:
+          kubernetesServer: VKE-Dubokluster
+        input:
+          filePath: ''
+          commit: ''
+          namespace: ''
+          scmConstants: {
+            }
+          action: DELETE
+          filterByLabel: ''
+          continueOnConflict: false
+          timeout: '5'
+          yaml: |-
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: yelb-devtest-${executionIndex}
+            spec:
+              finalizers:
+              - kubernetes
+          revision: n-1

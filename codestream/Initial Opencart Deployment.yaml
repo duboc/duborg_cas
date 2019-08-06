@@ -1,0 +1,69 @@
+---
+project: Apps Project
+kind: PIPELINE
+name: Initial Opencart Deployment
+enabled: true
+concurrency: 10
+ciWorkspace:
+  endpoint: ''
+  image: ''
+  registry: ''
+  path: ''
+  cache:
+  - ''
+stageOrder:
+- OpenCart Deployment to AWS
+- QA Testing and Approval
+- OpenCart Deployment to Azure
+stages:
+  OpenCart Deployment to AWS:
+    taskOrder:
+    - Deploy OC to AWS
+    tasks:
+      Deploy OC to AWS:
+        type: Blueprint
+        input:
+          blueprint: OpenCart Application
+          filepath: ''
+          action: CreateDeployment
+          deploymentName: OC-AWS Environment
+          version: '1.4'
+          parameters: {
+            pass: VMware1!,
+            user: demouser,
+            platform: 'platform:aws'
+          }
+  OpenCart Deployment to Azure:
+    taskOrder:
+    - OpenCart Deployment to Azure
+    tasks:
+      OpenCart Deployment to Azure:
+        type: Blueprint
+        input:
+          blueprint: OpenCart Application
+          filepath: ''
+          action: CreateDeployment
+          deploymentName: OC Azure Environment
+          version: '1.4'
+          parameters: {
+            pass: VMware1!,
+            user: demouser,
+            platform: 'platform:aws'
+          }
+  QA Testing and Approval:
+    taskOrder:
+    - QA Approval
+    tasks:
+      QA Approval:
+        type: UserOperation
+        input:
+          summary: Summary - QA Approval Notification
+          pipelineName: ${name}
+          expirationInDays: 1
+          approverGroups: [
+            ]
+          approvers: [
+            aduboc@vmware.com]
+          description: "Please perform QA test and approval for the deployment to Production.\n \nYour\
+            \ Test environment can be accessed here:\n${OpenCart Deployment to AWS.Deploy OC to AWS.output.deploymentDetails.resources.frontend.address}"
+          sendemail: false
