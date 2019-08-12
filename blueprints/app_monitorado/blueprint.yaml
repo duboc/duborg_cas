@@ -1,0 +1,31 @@
+formatVersion: 1
+inputs:
+  platform:
+    type: string
+    title: Nuvem
+    oneOf:
+      - title: AWS
+        const: 'platform:aws'
+      - title: Azure
+        const: 'platform:azure'
+      - title: Google Cloud
+        const: 'platform:gcp'
+    default: 'platform:aws'
+  tamanho:
+    type: string
+    enum:
+      - Small
+      - Medium
+resources:
+  Cloud_Machine_1:
+    type: Cloud.Machine
+    properties:
+      image: Ubuntu
+      flavor: '${input.tamanho}'
+      constraints:
+        - tag: '${input.platform}'
+      cloudConfig: |
+        runcmd:
+          - sudo bash -c "$(curl -sL https://wavefront.com/install)" -- install --proxy --wavefront-url https://surf.wavefront.com --api-token your_token 
+          - sudo bash -c "$(curl -sL https://wavefront.com/install)" -- install --agent --proxy-address localhost --proxy-port 2878
+
