@@ -11,8 +11,8 @@ resources:
         - key: project
           value: novo-app
       remoteAccess:
-        authentication: keyPairName
-        keyPair: iac
+        authentication: publicPrivateKey
+        sshKey: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCeRYyl8BwIoo3NRsktrED9X6A82BWy1iZEFW79+o8J9yDHGxKYFsWoLV37XvLMrkohmavv2/ryxFWX69XLy2MyzkyE07pnvKgvCtcLaPQWfcpALzhb+Cju/4TBaqAO+XqVAj7s0sSGwzQuE/5yzs/Y4E2z27QVejlNYN8Q3axgkVYmLfGTwbKfgEe5dsKnpDcmdcSHRUasxy3Zkax9fKh0eGztTWadCyaiNGLznzDPi18pZHcgpeS3JYJ4IjPVSZjAFwqaoTt13T2SKGGUyPIORXjq3dBGAHgKRbPnmdROHl1l1e4XVT2M7C33ncaIHzdrHfv8aR6rwEb5Badwc8lH
       constraints:
         - tag: 'platform:aws'
       cloudConfig: |
@@ -43,8 +43,9 @@ resources:
           - tar -xvzf harbor-offline-installer-v1.8.2-rc2.tgz
           - mkdir -p /opt/harbor/ssl
           - openssl req -subj '/CN=harbor.grt.local/O=GRT/C=US' -new -newkey rsa:4096 -sha256 -days 365 -nodes -x509 -keyout /opt/harbor/ssl/harbor.key -out /opt/harbor/ssl/harbor.crt
-          - /bin/sed -i 's/^hostname.*/hostname = harbor.grt.local/' /harbor/harbor.yml
-          - /bin/sed -i 's/harbor_admin_password.*/harbor_admin_password = VMware1!/' /harbor/harbor.yml
+          - /bin/sed -i 's/^hostname.*/hostname':' harbor.grt.local/' /harbor/harbor.yml
+          - /bin/sed -i 's/harbor_admin_password.*/harbor_admin_password':' VMware1!/' /harbor/harbor.yml
+          - /bin/sed -i 's/  port':' 80/  port':' 8080/' /harbor/harbor.yml
           - /bin/sed -i 's/# https':'/https':'/' /harbor/harbor.yml
           - /bin/sed -i 's/#   port':' 443/   port':' 443/' /harbor/harbor.yml
           - /bin/sed -i 's/#   certificate':' \/your\/certificate\/path/   certificate':' \/opt\/harbor\/ssl\/harbor.crt/' /harbor/harbor.yml
